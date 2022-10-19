@@ -3,12 +3,11 @@ package org.utbot.cpp.clion.plugin.settings
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
-import com.jetbrains.cidr.cpp.execution.CMakeAppRunConfiguration
+import org.utbot.cpp.clion.plugin.listeners.PluginActivationListener
 import org.utbot.cpp.clion.plugin.listeners.UTBotSettingsChangedListener
-import org.utbot.cpp.clion.plugin.ui.targetsToolWindow.UTBotTarget
+import org.utbot.cpp.clion.plugin.ui.utbotToolWindow.targetToolWindow.UTBotTarget
 import org.utbot.cpp.clion.plugin.utils.convertToRemotePathIfNeeded
 import org.utbot.cpp.clion.plugin.utils.isWindows
-import org.utbot.cpp.clion.plugin.utils.notifyWarning
 import org.utbot.cpp.clion.plugin.utils.path
 import java.io.File
 import java.nio.file.Path
@@ -16,14 +15,14 @@ import java.nio.file.Paths
 
 @Service
 class UTBotAllProjectSettings(val project: Project) {
-    val storedSettings: UTBotProjectStoredSettings.State
-        get() = project.service<UTBotProjectStoredSettings>().state
+    val storedSettings: UTBotProjectStoredSettings
+        get() = project.service<UTBotProjectStoredSettings>()
 
     val buildDirPath: Path
         get() = Paths.get(project.path).resolve(storedSettings.buildDirRelativePath)
 
     val testsDirPath: Path
-        get() = Paths.get(project.path).resolve(storedSettings.testsDirRelativePath)
+        get() = Paths.get(project.path).resolve(storedSettings.testDirRelativePath)
 
     val convertedSourcePaths: List<String>
         get() = storedSettings.sourceDirs.map { it.convertToRemotePathIfNeeded(project) }
@@ -54,6 +53,13 @@ class UTBotAllProjectSettings(val project: Project) {
         project.messageBus.let { bus ->
             if(!bus.isDisposed)
                 bus.syncPublisher(UTBotSettingsChangedListener.TOPIC).settingsChanged(this)
+        }
+    }
+
+    fun fireUTBotEnabledStateChanged() {
+        project.messageBus.let {
+            if (!it.isDisposed)
+                project.messageBus.syncPublisher(PluginActivationListener.TOPIC).enabledChanged(project.settings.storedSettings.isPluginEnabled)
         }
     }
 
