@@ -53,7 +53,7 @@ namespace tests {
     struct UTBotKTestObject {
         std::string name;
         std::vector<char> bytes;
-        std::vector<Offset> offsetsInBytes;
+        std::vector<Pointer> pointers;
         size_t address;
         bool is_lazy = false;
 
@@ -61,17 +61,17 @@ namespace tests {
          * Constructs UTBotKTestObject
          * @param name object's name
          * @param bytes byte array associated with object
-         * @param offsets in bytes
+         * @param pointers vector of pointers
          * @param address object's address
          * @param is_lazy whether object is lazy
          */
         UTBotKTestObject(std::string name,
                          std::vector<char> bytes,
-                         std::vector<Offset> offsets,
+                         std::vector<Pointer> pointers,
                          size_t address,
                          bool is_lazy);
 
-        explicit UTBotKTestObject(const ConcretizedObject &kTestObject);
+        explicit UTBotKTestObject(const KTestObject &kTestObject);
     };
     struct UTBotKTest {
         enum class Status {
@@ -424,7 +424,6 @@ namespace tests {
             std::vector<MethodParam> stubValuesTypes;
             std::vector<TestCaseParamValue> stubValues;
 
-            MapAddressName lazyAddressToName;
             std::vector<InitReference> lazyReferences;
 
             std::vector<TestCaseParamValue> funcParamValues;
@@ -450,8 +449,6 @@ namespace tests {
             std::optional<std::vector<FileInfo>> filesValues;
             std::vector<InitReference> lazyReferences;
             std::vector<UTBotKTestObject> objects;
-
-            MapAddressName lazyAddressToName;
 
             std::vector<MethodParam> stubValuesTypes;
             std::vector<TestCaseParamValue> stubValues;
@@ -653,9 +650,10 @@ namespace tests {
         struct RawKleeParam {
             std::string paramName;
             std::vector<char> rawData;
+            std::vector<Pointer> pointers;
 
-            RawKleeParam(std::string paramName, std::vector<char> rawData)
-                : paramName(std::move(paramName)), rawData(std::move(rawData)) {
+            RawKleeParam(std::string paramName, std::vector<char> rawData, std::vector<Pointer> pointers)
+                : paramName(std::move(paramName)), rawData(std::move(rawData)), pointers(pointers) {
             }
 
             [[nodiscard]] [[maybe_unused]] bool hasPrefix(const std::string &prefix) const {
@@ -704,17 +702,19 @@ namespace tests {
         testParameterView(const RawKleeParam &kleeParam,
                           const Tests::TypeAndVarName &param,
                           types::PointerUsage usage,
-                          const MapAddressName &fromAddressToName,
+                          const std::vector<UTBotKTestObject> &objects,
                           std::vector<InitReference> &initReferences,
                           const std::optional<const Tests::MethodDescription> &testingMethod = std::nullopt);
 
         std::shared_ptr<ArrayValueView> multiArrayView(const std::vector<char> &byteArray,
+                                                       const std::vector<Pointer> &lazyPointersArray,
                                                        const types::Type &type,
                                                        size_t arraySizeInBits,
                                                        size_t offsetInBits,
                                                        types::PointerUsage usage);
 
         std::shared_ptr<ArrayValueView> arrayView(const std::vector<char> &byteArray,
+                                                  const std::vector<Pointer> &lazyPointersArray,
                                                   const types::Type &type,
                                                   size_t arraySizeInBits,
                                                   size_t offsetInBits,
@@ -731,18 +731,20 @@ namespace tests {
                                                                  const std::string &fieldName);
 
         std::shared_ptr<StructValueView> structView(const std::vector<char> &byteArray,
+                                                    const std::vector<Pointer> &lazyPointersArray,
                                                     const types::StructInfo &curStruct,
                                                     size_t offsetInBits,
                                                     types::PointerUsage usage);
 
         std::shared_ptr<StructValueView> structView(const std::vector<char> &byteArray,
+                                                    const std::vector<Pointer> &lazyPointersArray,
                                                     const types::StructInfo &curStruct,
                                                     size_t offsetInBits,
                                                     types::PointerUsage usage,
                                                     const std::optional<const Tests::MethodDescription> &testingMethod,
                                                     const bool anonymous,
                                                     const std::string &name,
-                                                    const MapAddressName &fromAddressToName,
+                                                    const std::vector<UTBotKTestObject> &objects,
                                                     std::vector<InitReference> &initReferences);
 
         static std::shared_ptr<EnumValueView> enumView(const std::vector<char> &byteArray,
@@ -821,11 +823,13 @@ namespace tests {
                                          const Tests::MethodTestCase &testCase,
                                          const Tests::MethodDescription &methodDescription);
 
-        std::shared_ptr<AbstractValueView> getLazyPointerView(const MapAddressName &fromAddressToName,
-                                                              std::vector<InitReference> &initReferences,
-                                                              const std::string &name,
-                                                              std::string res,
-                                                              const types::Type &paramType) const;
+        std::shared_ptr<AbstractValueView>
+        getLazyPointerView(const std::vector<UTBotKTestObject> &objects,
+                           const std::optional<Pointer> &lazyPointer,
+                           std::vector<InitReference> &initReferences,
+                           const std::string &name,
+                           std::string res,
+                           const types::Type &paramType) const;
 
         void
         getTestParamView(const Tests::MethodDescription &methodDescription, const std::vector<RawKleeParam> &rawKleeParams,
